@@ -357,6 +357,7 @@ void ImageProcessor::stereoCallback(const sensor_msgs::ImageConstPtr& cam0_img,c
   // Publish features in the current image.
   start_time = ros::Time::now();
   publish();
+
   ROS_DEBUG("Publishing: %f",(ros::Time::now()-start_time).toSec());
 
   // Update the previous image and previous features.
@@ -1454,7 +1455,14 @@ void ImageProcessor::twoPointRansac(
   return;
 }
 
-void ImageProcessor::publish() {
+void ImageProcessor::publish()
+{
+  publishMsckfFeatures();
+  
+  publishVinsFeatures();
+}
+
+void ImageProcessor::publishMsckfFeatures() {
   // Publish features.
   CameraMeasurementPtr feature_msg_ptr(new CameraMeasurement);
   feature_msg_ptr->header.stamp = cam0_curr_img_ptr->header.stamp;
@@ -1463,6 +1471,8 @@ void ImageProcessor::publish() {
   vector<FeatureIDType> curr_ids(0);
   vector<Point2f> curr_cam0_points(0);
   vector<Point2f> curr_cam1_points(0);
+  vector<Point2f> curr_cam0_points_velocity(0);
+  vector<Point2f> curr_cam1_points_velocity(0);
 
   for (const auto& grid_features : (*curr_features_ptr)) {
     for (const auto& feature : grid_features.second) {
@@ -1473,6 +1483,7 @@ void ImageProcessor::publish() {
       curr_cam1_points.push_back(feature.cam1_point);
     }
   }
+
 
   vector<Point2f> curr_cam0_points_undistorted(0);
   vector<Point2f> curr_cam1_points_undistorted(0);
@@ -1529,9 +1540,6 @@ void ImageProcessor::publish() {
     waitKey(1);
   }
 
-  
-
-
   int n =0;
   for (int i = 0; i < curr_ids.size(); ++i) {
     feature_msg_ptr->features.push_back(FeatureMeasurement());
@@ -1551,6 +1559,7 @@ void ImageProcessor::publish() {
 
   feature_pub.publish(feature_msg_ptr);
 
+
   // Publish tracking info.
   TrackingInfoPtr tracking_info_msg_ptr(new TrackingInfo());
   tracking_info_msg_ptr->header.stamp = cam0_curr_img_ptr->header.stamp;
@@ -1560,48 +1569,108 @@ void ImageProcessor::publish() {
   tracking_info_msg_ptr->after_ransac = after_ransac;
   tracking_info_pub.publish(tracking_info_msg_ptr);
 
-  // Publish vins features
+  return;
+}
+
+void ImageProcessor::publishVinsFeatures() {
+  if(NULL == cam0_prev_img_ptr || NULL == cam0_curr_img_ptr)
+    return;
+
+  // Publish features.
+  CameraMeasurementPtr feature_msg_ptr(new CameraMeasurement);
+  feature_msg_ptr->header.stamp = cam0_curr_img_ptr->header.stamp;
+  feature_msg_ptr->header.frame_id = "features";
+
+  vector<FeatureIDType> curr_ids(0);
+  vector<Point2f> curr_cam0_points(0);
+  vector<Point2f> curr_cam1_points(0);
+  vector<Point2f> curr_cam0_points_velocity(0);
+  vector<Point2f> curr_cam1_points_velocity(0);
+
   sensor_msgs::PointCloudPtr feature_points(new sensor_msgs::PointCloud);
   sensor_msgs::ChannelFloat32 id_of_point;
   sensor_msgs::ChannelFloat32 u_of_point;
   sensor_msgs::ChannelFloat32 v_of_point;
+  sensor_msgs::ChannelFloat32 velocity_x_of_point;
+  sensor_msgs::ChannelFloat32 velocity_y_of_point;
 
-  feature_points->header.stamp = cam0_curr_img_ptr->header.stamp;
-  for (int i = 0; i < curr_ids.size(); ++i) {
-    int id = curr_ids[i];
+  double dt = cam0_curr_img_ptr->header.stamp.toSec() - cam0_prev_img_ptr->header.stamp.toSec();
+  cam0_curr_unpts_map.clear();
+  cam1_curr_unpts_map.clear();
 
-    Eigen::Vector2d a(curr_cam0_points[i].x, curr_cam0_points[i].y);
-    Eigen::Vector3d b;
-    m_camera[0]->liftProjective(a, b);
+  for (const auto& grid_features : (*curr_features_ptr)) {
+    for (const auto& feature : grid_features.second) {
+      //if(feature.cam0_point.y > 240.0) continue;
+      //cout<<feature.cam0_point<<endl;
+      int id = feature.id;
+      Point2f curr_cam0_point(feature.cam0_point.x, feature.cam0_point.y);
+      Point2f curr_cam1_point(feature.cam1_point.x, feature.cam1_point.y);
+      Point2f curr_cam0_point_velocity(0,0);
+      Point2f curr_cam1_point_velocity(0,0);
 
-    geometry_msgs::Point32 p;
-    p.x = b.x() / b.z();
-    p.y = b.y() / b.z();
-    p.z = 1;
+      // 1.left camera
+      // 畸变校正，归一化坐标
+      Eigen::Vector2d a(curr_cam0_point.x, curr_cam0_point.y);
+      Eigen::Vector3d b;
+      m_camera[0]->liftProjective(a, b);
 
-    feature_points->points.push_back(p);
-    id_of_point.values.push_back(id);
-    u_of_point.values.push_back(curr_cam0_points[i].x);
-    v_of_point.values.push_back(curr_cam0_points[i].y);
+      geometry_msgs::Point32 p;
+      p.x = b.x() / b.z();
+      p.y = b.y() / b.z();
+      p.z = 1;
 
-    // right camera
-    Eigen::Vector2d a1(curr_cam1_points[i].x, curr_cam1_points[i].y);
-    Eigen::Vector3d b1;
-    m_camera[1]->liftProjective(a1, b1);
-    
-    geometry_msgs::Point32 p1;
-    p1.x = b1.x() / b1.z();
-    p1.y = b1.y() / b1.z();
-    p1.z = 1;
+      //计算光流速度
+      cam0_curr_unpts_map.insert(make_pair(id, cv::Point2f(p.x, p.y)));
+      std::map<int, cv::Point2f>::iterator it = cam0_prev_unpts_map.find(id);
+      if (it != cam0_prev_unpts_map.end()) {
+          double v_x = (p.x - it->second.x) / dt;
+          double v_y = (p.y - it->second.y) / dt;
+          curr_cam0_point_velocity = cv::Point2f(v_x, v_y);
+      }
 
-    feature_points->points.push_back(p1);
-    id_of_point.values.push_back(id);
-    u_of_point.values.push_back(curr_cam1_points[i].x);
-    v_of_point.values.push_back(curr_cam1_points[i].y);
+      feature_points->points.push_back(p);
+      id_of_point.values.push_back(id);
+      u_of_point.values.push_back(curr_cam0_point.x);
+      v_of_point.values.push_back(curr_cam0_point.y);
+      velocity_x_of_point.values.push_back(curr_cam0_point_velocity.x);
+      velocity_y_of_point.values.push_back(curr_cam0_point_velocity.y);
+
+      // 2.right camera
+      Eigen::Vector2d a1(curr_cam1_point.x, curr_cam1_point.y);
+      Eigen::Vector3d b1;
+      m_camera[1]->liftProjective(a1, b1);
+      
+      geometry_msgs::Point32 p1;
+      p1.x = b1.x() / b1.z();
+      p1.y = b1.y() / b1.z();
+      p1.z = 1;
+
+      //计算光流速度
+      cam1_curr_unpts_map.insert(make_pair(id, cv::Point2f(p1.x, p1.y)));
+      std::map<int, cv::Point2f>::iterator it1 = cam1_prev_unpts_map.find(id);
+      if (it1 != cam1_prev_unpts_map.end()) {
+          double v_x = (p1.x - it1->second.x) / dt;
+          double v_y = (p1.y - it1->second.y) / dt;
+          curr_cam1_point_velocity = cv::Point2f(v_x, v_y);
+      }
+
+      feature_points->points.push_back(p1);
+      id_of_point.values.push_back(id);
+      u_of_point.values.push_back(curr_cam1_point.x);
+      v_of_point.values.push_back(curr_cam1_point.y);
+      velocity_x_of_point.values.push_back(curr_cam1_point_velocity.x);
+      velocity_y_of_point.values.push_back(curr_cam1_point_velocity.y);   
+    }
   }
+  cam0_prev_unpts_map = cam0_curr_unpts_map;
+  cam1_prev_unpts_map = cam1_curr_unpts_map;
+
+
   feature_points->channels.push_back(id_of_point);
   feature_points->channels.push_back(u_of_point);
   feature_points->channels.push_back(v_of_point);
+  feature_points->channels.push_back(velocity_x_of_point);
+  feature_points->channels.push_back(velocity_y_of_point);
   if(frame_count++ % 2 == 0)
     feature2_pub.publish(feature_points);
 

@@ -201,6 +201,10 @@ private:
    */
   void publish();
 
+   void publishVinsFeatures();
+
+   void publishMsckfFeatures();
+
   /*
    * @brief drawFeaturesMono
    *    Draw tracked and newly detected features on the left
@@ -432,6 +436,11 @@ private:
 
   //
   cv::Ptr<cv::CLAHE> clahe;
+
+  std::map<int, cv::Point2f> cam0_prev_unpts_map;
+  std::map<int, cv::Point2f> cam1_prev_unpts_map;
+  std::map<int, cv::Point2f> cam0_curr_unpts_map;
+  std::map<int, cv::Point2f> cam1_curr_unpts_map;
 };
 
 typedef ImageProcessor::Ptr ImageProcessorPtr;
