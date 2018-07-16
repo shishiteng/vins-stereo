@@ -144,7 +144,7 @@ getMeasurements()
 	  IMUs.emplace_back(imu_buf.front());
 	  imu_buf.pop();
         }
-	//IMUs.emplace_back(imu_buf.front()); //imu插值时需要多给一帧
+	IMUs.emplace_back(imu_buf.front()); //imu插值时需要多给一帧
 
 	if (IMUs.empty())
 	  ROS_WARN("no imu between two image");
@@ -460,7 +460,7 @@ void process()
 	    double img_t = img_msg->header.stamp.toSec();
 	    if (t <= img_t) {
 	      send_imu(imu_msg);
-	      //ROS_DEBUG("processing imu data with stamp %f", imu_msg->header.stamp.toSec());
+	      ROS_DEBUG("processing imu data with stamp %f", imu_msg->header.stamp.toSec());
 	    } else {
 	      double dt_1 = img_t - current_time;
 	      double dt_2 = t - img_t;
@@ -486,7 +486,7 @@ void process()
 	      imu.header.stamp = img_msg->header.stamp;
 
 	      boost::shared_ptr<sensor_msgs::Imu> pimu = boost::make_shared<sensor_msgs::Imu>(imu);
-	      //ROS_DEBUG("processing imu data at stamp %f", pimu->header.stamp.toSec());
+	      ROS_DEBUG("processing imu_ data at stamp %f", pimu->header.stamp.toSec());
 	      send_imu(pimu);
 	      //estimator.processIMU(dt_1, Vector3d(dx, dy, dz), Vector3d(rx, ry, rz));
 	      //printf("dimu: a: %f %f %f w: %f %f %f\n",dx, dy, dz, rx, ry, rz);

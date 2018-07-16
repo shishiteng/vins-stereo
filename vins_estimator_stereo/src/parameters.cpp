@@ -110,8 +110,6 @@ void readParameters(ros::NodeHandle &n)
 	cv_T = -cv_R.t()*cv_T;
         cv_R = cv_R.t();
 	
-	std::cout<<"-T"<<cv_T<<std::endl;
-        std::cout<<"-T"<<-cv_T<<std::endl;
         Eigen::Matrix3d eigen_R;
         Eigen::Vector3d eigen_T;
         cv::cv2eigen(cv_R, eigen_R);

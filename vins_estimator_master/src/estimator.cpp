@@ -14,8 +14,13 @@ void Estimator::setParameter()
         ric[i] = RIC[i];
     }
     f_manager.setRic(ric);
+#if 0
     ProjectionFactor::sqrt_info = FOCAL_LENGTH / 1.5 * Matrix2d::Identity();
     ProjectionTdFactor::sqrt_info = FOCAL_LENGTH / 1.5 * Matrix2d::Identity();
+#else
+    ProjectionFactor::sqrt_info = 600 * Matrix2d::Identity();
+    ProjectionTdFactor::sqrt_info = 600 * Matrix2d::Identity();
+#endif
     td = TD;
 }
 

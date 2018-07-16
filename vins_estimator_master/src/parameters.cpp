@@ -95,8 +95,9 @@ void readParameters(ros::NodeHandle &n)
         fsSettings["extrinsicRotation"] >> cv_R;
         fsSettings["extrinsicTranslation"] >> cv_T;
 
-	cv_R = cv_R.t();
 	cv_T = -cv_R.t()*cv_T;
+        cv_R = cv_R.t();
+	
 	
         Eigen::Matrix3d eigen_R;
         Eigen::Vector3d eigen_T;
