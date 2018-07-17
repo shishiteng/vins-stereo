@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 2.8.12)
 project(image_processor)
 
-add_compile_options(-std=c++11)
+set(CMAKE_BUILD_TYPE "Release")
+set(CMAKE_CXX_FLAGS "-std=c++11")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -g")
 
 # Modify cmake module path if new .cmake files are required
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake")

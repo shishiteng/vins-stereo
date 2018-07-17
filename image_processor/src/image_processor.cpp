@@ -266,8 +266,8 @@ bool ImageProcessor::initialize()
     return false;
   ROS_INFO("Finish loading ROS parameters...");
 
-  ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug);
-  //ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Info);
+  //ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug);
+  ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Info);
 
   // Create feature detector.
   detector_ptr = FastFeatureDetector::create(processor_config.fast_threshold);
@@ -653,11 +653,13 @@ void ImageProcessor::trackFeatures()
   // 1.前后帧间跟踪只用orb剔除outlier
   if (processor_config.check_orb)
   {
+    start_time = ros::Time::now();
     checkWithORB(cam0_prev_img_ptr->image, cam0_curr_img_ptr->image,
                  prev_cam0_points, curr_cam0_points,
                  track_inliers,
                  orb_outliers);
     //printf("trackFeatures:orb outliers:%d\n",orb_outliers.size());
+    ROS_DEBUG("trackFeatures | checkWithORB : %f", (ros::Time::now() - start_time).toSec());
   }
 
   // Mark those tracked points out of the image region
@@ -744,6 +746,7 @@ void ImageProcessor::trackFeatures()
   // 3.circle match:进一步剔除outlier
   if (processor_config.check_circle)
   {
+    start_time = ros::Time::now();
     vector<uchar> circle_inliers(prev_cam0_points.size(), 1);
     checkWithCircle(prev_tracked_cam0_points,
                     curr_tracked_cam0_points,
@@ -751,6 +754,7 @@ void ImageProcessor::trackFeatures()
                     curr_cam1_points,
                     match_inliers,
                     circle_outliers);
+    ROS_DEBUG("trackFeatures | checkWithCircle : %f", (ros::Time::now() - start_time).toSec());
   }
 
   vector<FeatureIDType> prev_matched_ids(0);
