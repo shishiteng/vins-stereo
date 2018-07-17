@@ -351,8 +351,16 @@ private:
   
   void checkWithCircle(std::vector<cv::Point2f> prev_pts0,
 		       std::vector<cv::Point2f> curr_pts0,
+           std::vector<cv::Point2f> prev_pts1,
+		       std::vector<cv::Point2f> curr_pts1,
 		       std::vector<unsigned char> &inliers,
 		       std::vector<cv::Point2f> &outlier_points);
+
+  void removeOutliers(std::vector<cv::Point2f> prev_pts0,
+          std::vector<cv::Point2f> prev_pts1,
+          std::vector<cv::Point2f> curr_pts0,
+          std::vector<cv::Point2f> curr_pts1,
+          std::vector<unsigned char> &inliers);
 
   // Indicate if this is the first image message.
   bool is_first_img;
@@ -363,6 +371,7 @@ private:
   // Feature detector
   ProcessorConfig processor_config;
   cv::Ptr<cv::Feature2D> detector_ptr;
+  cv::Ptr<cv::ORB> orb_ptr;
 
   // IMU message buffer.
   std::vector<sensor_msgs::Imu> imu_msg_buffer;
@@ -441,6 +450,11 @@ private:
   std::map<int, cv::Point2f> cam1_prev_unpts_map;
   std::map<int, cv::Point2f> cam0_curr_unpts_map;
   std::map<int, cv::Point2f> cam1_curr_unpts_map;
+
+  // cv::Mat cam0_prev_orbdesc;
+  // cv::Mat cam1_prev_orbdesc;
+  // cv::Mat cam0_curr_orbdesc;
+  // cv::Mat cam1_curr_orbdesc;
 };
 
 typedef ImageProcessor::Ptr ImageProcessorPtr;
