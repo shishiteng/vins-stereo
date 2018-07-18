@@ -292,7 +292,7 @@ void ImageProcessor::stereoCallback(const sensor_msgs::ImageConstPtr &cam0_img, 
   stereo_outliers.clear();
   circle_outliers.clear();
 
-#if 1
+#if 0
   // 补偿时间戳，把图像时间转到imu时间系下
   // t_imu = t_cam + timeshift
   ros::Duration offset(processor_config.timeshift);
@@ -850,7 +850,7 @@ void ImageProcessor::trackFeatures()
   for (const auto &item : *curr_features_ptr)
     curr_feature_num += item.second.size();
 
-  ROS_INFO_THROTTLE(0.5,
+  ROS_DEBUG_THROTTLE(0.5,
                     "\033[0;32m candidates: %d; track: %d; match: %d; ransac: %d/%d=%f\033[0m",
                     before_tracking, after_tracking, after_matching,
                     curr_feature_num, prev_feature_num,
@@ -1711,11 +1711,6 @@ void ImageProcessor::publishVinsFeatures()
   if (NULL == cam0_prev_img_ptr || NULL == cam0_curr_img_ptr)
     return;
 
-  // Publish features.
-  CameraMeasurementPtr feature_msg_ptr(new CameraMeasurement);
-  feature_msg_ptr->header.stamp = cam0_curr_img_ptr->header.stamp;
-  feature_msg_ptr->header.frame_id = "features";
-
   vector<FeatureIDType> curr_ids(0);
   vector<Point2f> curr_cam0_points(0);
   vector<Point2f> curr_cam1_points(0);
@@ -1723,13 +1718,21 @@ void ImageProcessor::publishVinsFeatures()
   vector<Point2f> curr_cam1_points_velocity(0);
 
   sensor_msgs::PointCloudPtr feature_points(new sensor_msgs::PointCloud);
+  feature_points->header.stamp = cam0_curr_img_ptr->header.stamp;
   sensor_msgs::ChannelFloat32 id_of_point;
   sensor_msgs::ChannelFloat32 u_of_point;
   sensor_msgs::ChannelFloat32 v_of_point;
   sensor_msgs::ChannelFloat32 velocity_x_of_point;
   sensor_msgs::ChannelFloat32 velocity_y_of_point;
 
+  id_of_point.name = "id";
+  u_of_point.name = "undistorted_x";
+  v_of_point.name = "undistorted_y";
+  velocity_x_of_point.name = "velocity_x";
+  velocity_y_of_point.name = "velocity_y";
+
   double dt = cam0_curr_img_ptr->header.stamp.toSec() - cam0_prev_img_ptr->header.stamp.toSec();
+  //cerr<<" delta_t:"<<dt<<endl;
   cam0_curr_unpts_map.clear();
   cam1_curr_unpts_map.clear();
 
@@ -1758,12 +1761,15 @@ void ImageProcessor::publishVinsFeatures()
 
       //计算光流速度
       cam0_curr_unpts_map.insert(make_pair(id, cv::Point2f(p.x, p.y)));
-      std::map<int, cv::Point2f>::iterator it = cam0_prev_unpts_map.find(id);
-      if (it != cam0_prev_unpts_map.end())
+      if (!cam0_prev_unpts_map.empty())
       {
-        double v_x = (p.x - it->second.x) / dt;
-        double v_y = (p.y - it->second.y) / dt;
-        curr_cam0_point_velocity = cv::Point2f(v_x, v_y);
+        std::map<int, cv::Point2f>::iterator it = cam0_prev_unpts_map.find(id);
+        if (it != cam0_prev_unpts_map.end())
+        {
+          double v_x = (p.x - it->second.x) / dt;
+          double v_y = (p.y - it->second.y) / dt;
+          curr_cam0_point_velocity = cv::Point2f(v_x, v_y);
+        }
       }
 
       feature_points->points.push_back(p);
@@ -1785,12 +1791,15 @@ void ImageProcessor::publishVinsFeatures()
 
       //计算光流速度
       cam1_curr_unpts_map.insert(make_pair(id, cv::Point2f(p1.x, p1.y)));
-      std::map<int, cv::Point2f>::iterator it1 = cam1_prev_unpts_map.find(id);
-      if (it1 != cam1_prev_unpts_map.end())
+      if (!cam1_prev_unpts_map.empty())
       {
-        double v_x = (p1.x - it1->second.x) / dt;
-        double v_y = (p1.y - it1->second.y) / dt;
-        curr_cam1_point_velocity = cv::Point2f(v_x, v_y);
+        std::map<int, cv::Point2f>::iterator it1 = cam1_prev_unpts_map.find(id);
+        if (it1 != cam1_prev_unpts_map.end())
+        {
+          double v_x = (p1.x - it1->second.x) / dt;
+          double v_y = (p1.y - it1->second.y) / dt;
+          curr_cam1_point_velocity = cv::Point2f(v_x, v_y);
+        }
       }
 
       feature_points->points.push_back(p1);
@@ -1809,7 +1818,9 @@ void ImageProcessor::publishVinsFeatures()
   feature_points->channels.push_back(v_of_point);
   feature_points->channels.push_back(velocity_x_of_point);
   feature_points->channels.push_back(velocity_y_of_point);
-  if (frame_count++ % 2 == 0)
+
+  // publish
+  if (frame_count++ % 2 == 1)
     feature2_pub.publish(feature_points);
 
   return;
@@ -2208,15 +2219,14 @@ void ImageProcessor::checkWithCircle(vector<Point2f> prev_pts0,
   //    |                |
   // prev_img0 ---> prev_img1
 
-  if (prev_cam0_pyramid_.size() == 0 || 
-    prev_cam1_pyramid_.size() == 0 ||
-    prev_pts0.size() != curr_pts0.size())
+  if (prev_cam0_pyramid_.size() == 0 ||
+      prev_cam1_pyramid_.size() == 0 ||
+      prev_pts0.size() != curr_pts0.size())
     return;
 
   vector<unsigned char> status;
   vector<unsigned char> status_outlier(prev_pts0.size(), 1);
   vector<Point2f> curr_cam1_points;
-
 
   calcOpticalFlowPyrLK(prev_cam1_pyramid_, curr_cam1_pyramid_,
                        prev_pts1, curr_cam1_points,

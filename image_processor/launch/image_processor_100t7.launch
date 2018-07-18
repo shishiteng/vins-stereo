@@ -23,7 +23,7 @@
       <param name="ransac_threshold" value="3"/>
       <param name="stereo_threshold" value="5"/>
 
-      <param name="equalize" value="1"/>
+      <param name="equalize" value="0"/>
 
       <param name="debug_tracking" value="0"/>
       <param name="check_orb" value="0"/>
