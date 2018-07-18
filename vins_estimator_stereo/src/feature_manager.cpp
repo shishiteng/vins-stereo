@@ -42,25 +42,17 @@ int FeatureManager::getFeatureCount()
 }
 
 
-bool FeatureManager::addFeatureCheckParallax(int frame_count,
-					     const map<int, vector<pair<int, Vector3d>>> &image,
-					     const map<int, vector<pair<int, Vector3d>>> &image_r)
+bool FeatureManager::addFeatureCheckParallax(int frame_count, const map<int, vector<pair<int, Eigen::Matrix<double, 7*2, 1>>>> &image, double td)
 {
     ROS_DEBUG("input feature: %d", (int)image.size());
     ROS_DEBUG("num of feature: %d", getFeatureCount());
     double parallax_sum = 0;
     int parallax_num = 0;
     last_track_num = 0;
-    int distance = 0;
     for (auto &id_pts : image)
     {
-      auto it_b = image_r.begin();
-      std::advance(it_b,distance);
-      distance++;
-	
-      //FeaturePerFrame f_per_fra(id_pts.second[0].second);
-      FeaturePerFrame f_per_fra(id_pts.second[0].second,(*it_b).second[0].second);
-	
+        FeaturePerFrame f_per_fra(id_pts.second[0].second, td);
+
         int feature_id = id_pts.first;
         auto it = find_if(feature.begin(), feature.end(), [feature_id](const FeaturePerId &it)
                           {
@@ -351,6 +343,8 @@ void FeatureManager::removeFront(int frame_count)
         else
         {
             int j = WINDOW_SIZE - 1 - it->start_frame;
+            if (it->endFrame() < frame_count - 1)
+                continue;
             it->feature_per_frame.erase(it->feature_per_frame.begin() + j);
             if (it->feature_per_frame.size() == 0)
                 feature.erase(it);
