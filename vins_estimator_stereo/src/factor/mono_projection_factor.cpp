@@ -1,9 +1,9 @@
-#include "projection_factor.h"
+#include "mono_projection_factor.h"
 
-Eigen::Matrix2d ProjectionFactor::sqrt_info;
-double ProjectionFactor::sum_t;
+Eigen::Matrix2d MonoProjectionFactor::sqrt_info;
+double MonoProjectionFactor::sum_t;
 
-ProjectionFactor::ProjectionFactor(const Eigen::Vector3d &_pts_i, const Eigen::Vector3d &_pts_j) : pts_i(_pts_i), pts_j(_pts_j)
+MonoProjectionFactor::MonoProjectionFactor(const Eigen::Vector3d &_pts_i, const Eigen::Vector3d &_pts_j) : pts_i(_pts_i), pts_j(_pts_j)
 {
 #ifdef UNIT_SPHERE_ERROR
     Eigen::Vector3d b1, b2;
@@ -18,7 +18,7 @@ ProjectionFactor::ProjectionFactor(const Eigen::Vector3d &_pts_i, const Eigen::V
 #endif
 };
 
-bool ProjectionFactor::Evaluate(double const *const *parameters, double *residuals, double **jacobians) const
+bool MonoProjectionFactor::Evaluate(double const *const *parameters, double *residuals, double **jacobians) const
 {
     TicToc tic_toc;
     Eigen::Vector3d Pi(parameters[0][0], parameters[0][1], parameters[0][2]);
@@ -120,7 +120,7 @@ bool ProjectionFactor::Evaluate(double const *const *parameters, double *residua
     return true;
 }
 
-void ProjectionFactor::check(double **parameters)
+void MonoProjectionFactor::check(double **parameters)
 {
     double *res = new double[15];
     double **jaco = new double *[4];

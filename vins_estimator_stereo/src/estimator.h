@@ -14,8 +14,10 @@
 #include <ceres/ceres.h>
 #include "factor/imu_factor.h"
 #include "factor/pose_local_parameterization.h"
-#include "factor/projection_factor.h"
-#include "factor/projection_td_factor.h"
+#include "factor/mono_projection_factor.h"
+#include "factor/mono_projection_td_factor.h"
+#include "factor/stereo_projection_factor.h"
+#include "factor/stereo_projection_td_factor.h"
 #include "factor/marginalization_factor.h"
 
 #include <unordered_map>

@@ -1,9 +1,9 @@
-#include "projection_td_factor.h"
+#include "mono_projection_td_factor.h"
 
-Eigen::Matrix2d ProjectionTdFactor::sqrt_info;
-double ProjectionTdFactor::sum_t;
+Eigen::Matrix2d MonoProjectionTdFactor::sqrt_info;
+double MonoProjectionTdFactor::sum_t;
 
-ProjectionTdFactor::ProjectionTdFactor(const Eigen::Vector3d &_pts_i, const Eigen::Vector3d &_pts_j, 
+MonoProjectionTdFactor::MonoProjectionTdFactor(const Eigen::Vector3d &_pts_i, const Eigen::Vector3d &_pts_j, 
                                        const Eigen::Vector2d &_velocity_i, const Eigen::Vector2d &_velocity_j,
                                        const double _td_i, const double _td_j, const double _row_i, const double _row_j) : 
                                        pts_i(_pts_i), pts_j(_pts_j), 
@@ -31,7 +31,7 @@ ProjectionTdFactor::ProjectionTdFactor(const Eigen::Vector3d &_pts_i, const Eige
 #endif
 };
 
-bool ProjectionTdFactor::Evaluate(double const *const *parameters, double *residuals, double **jacobians) const
+bool MonoProjectionTdFactor::Evaluate(double const *const *parameters, double *residuals, double **jacobians) const
 {
     TicToc tic_toc;
     Eigen::Vector3d Pi(parameters[0][0], parameters[0][1], parameters[0][2]);
@@ -140,7 +140,7 @@ bool ProjectionTdFactor::Evaluate(double const *const *parameters, double *resid
     return true;
 }
 
-void ProjectionTdFactor::check(double **parameters)
+void MonoProjectionTdFactor::check(double **parameters)
 {
     double *res = new double[2];
     double **jaco = new double *[5];

@@ -23,6 +23,10 @@ std::string IMU_TOPIC;
 double ROW, COL;
 double TD, TR;
 
+// add by sst
+Eigen::Vector3d tc21;
+Eigen::Quaterniond qc21;
+
 template <typename T>
 T readParam(ros::NodeHandle &n, std::string name)
 {
@@ -44,7 +48,7 @@ void readParameters(ros::NodeHandle &n)
     std::string config_file;
     config_file = readParam<std::string>(n, "config_file");
     cv::FileStorage fsSettings(config_file, cv::FileStorage::READ);
-    if(!fsSettings.isOpened())
+    if (!fsSettings.isOpened())
     {
         std::cerr << "ERROR: Wrong path to settings" << std::endl;
     }
@@ -79,11 +83,10 @@ void readParameters(ros::NodeHandle &n)
         RIC.push_back(Eigen::Matrix3d::Identity());
         TIC.push_back(Eigen::Vector3d::Zero());
         EX_CALIB_RESULT_PATH = OUTPUT_PATH + "/extrinsic_parameter.csv";
-
     }
-    else 
+    else
     {
-        if ( ESTIMATE_EXTRINSIC == 1)
+        if (ESTIMATE_EXTRINSIC == 1)
         {
             ROS_WARN(" Optimize extrinsic param around initial guess!");
             EX_CALIB_RESULT_PATH = OUTPUT_PATH + "/extrinsic_parameter.csv";
@@ -95,10 +98,9 @@ void readParameters(ros::NodeHandle &n)
         fsSettings["extrinsicRotation"] >> cv_R;
         fsSettings["extrinsicTranslation"] >> cv_T;
 
-	cv_T = -cv_R.t()*cv_T;
+        cv_T = -cv_R.t() * cv_T;
         cv_R = cv_R.t();
-	
-	
+
         Eigen::Matrix3d eigen_R;
         Eigen::Vector3d eigen_T;
         cv::cv2eigen(cv_R, eigen_R);
@@ -107,10 +109,31 @@ void readParameters(ros::NodeHandle &n)
         eigen_R = Q.normalized();
         RIC.push_back(eigen_R);
         TIC.push_back(eigen_T);
-        ROS_INFO_STREAM("Extrinsic_R : " << std::endl << RIC[0]);
-        ROS_INFO_STREAM("Extrinsic_T : " << std::endl << TIC[0].transpose());
-        
-    } 
+        ROS_INFO_STREAM("Extrinsic_R : " << std::endl
+                                         << RIC[0]);
+        ROS_INFO_STREAM("Extrinsic_T : " << std::endl
+                                         << TIC[0].transpose());
+    }
+
+#if 1
+    // cam0 2 cam1
+    cv::Mat cv_R21, cv_T21;
+    fsSettings["stereoRotation"] >> cv_R21;
+    fsSettings["stereoTranslation"] >> cv_T21;
+
+    Eigen::Matrix3d eigen_R21;
+    Eigen::Vector3d eigen_T21;
+    cv::cv2eigen(cv_R21, eigen_R21);
+    cv::cv2eigen(cv_T21, eigen_T21);
+    Eigen::Quaterniond Q21(eigen_R21);
+    eigen_R21 = Q21.normalized();
+    qc21 = Q21.normalized();
+    tc21 = eigen_T21;
+    ROS_INFO_STREAM("stereo_R : " << std::endl
+                                  << eigen_R21);
+    ROS_INFO_STREAM("stereo_T : " << std::endl
+                                  << tc21.transpose());
+#endif
 
     INIT_DEPTH = 5.0;
     BIAS_ACC_THRESHOLD = 0.1;
@@ -133,6 +156,6 @@ void readParameters(ros::NodeHandle &n)
     {
         TR = 0;
     }
-    
+
     fsSettings.release();
 }

@@ -38,8 +38,10 @@ add_executable(vins_estimator_stereo
     src/estimator.cpp
     src/feature_manager.cpp
     src/factor/pose_local_parameterization.cpp
-    src/factor/projection_factor.cpp
-    src/factor/projection_td_factor.cpp
+    src/factor/mono_projection_factor.cpp
+    src/factor/stereo_projection_factor.cpp
+    src/factor/mono_projection_td_factor.cpp
+    src/factor/stereo_projection_td_factor.cpp
     src/factor/marginalization_factor.cpp
     src/utility/utility.cpp
     src/utility/visualization.cpp

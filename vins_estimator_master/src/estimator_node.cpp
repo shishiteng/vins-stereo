@@ -296,26 +296,17 @@ void process()
             map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> image;
             for (unsigned int i = 0; i < img_msg->points.size()/2; i++)
             {
-                int v = img_msg->channels[0].values[i*2] + 0.5;
+                int v = img_msg->channels[0].values[i*2];
                 int feature_id = v / NUM_OF_CAM;
                 int camera_id = v % NUM_OF_CAM;
                 double x = img_msg->points[i*2].x;
                 double y = img_msg->points[i*2].y;
                 double z = img_msg->points[i*2].z;
 
-		//vins-mono-master分支实现的功能，加了点坐标及点的速度，image_processor中还未实现
-		//暂时用0代替
-#if 0
-                double p_u = img_msg->channels[1].values[i];
-                double p_v = img_msg->channels[2].values[i];
-                double velocity_x = img_msg->channels[3].values[i];
-                double velocity_y = img_msg->channels[4].values[i];
-#else
-		double p_u = 0;
-                double p_v = 0;
-                double velocity_x = 0;
-                double velocity_y = 0;
-#endif
+		        double p_u = img_msg->channels[1].values[i*2];
+                double p_v = img_msg->channels[2].values[i*2];
+                double velocity_x = img_msg->channels[3].values[i*2];
+                double velocity_y = img_msg->channels[4].values[i*2];
                 ROS_ASSERT(z == 1);
                 Eigen::Matrix<double, 7, 1> xyz_uv_velocity;
                 xyz_uv_velocity << x, y, z, p_u, p_v, velocity_x, velocity_y;

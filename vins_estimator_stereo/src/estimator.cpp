@@ -20,8 +20,8 @@ void Estimator::setParameter()
     ProjectionFactor::sqrt_info = FOCAL_LENGTH / 1.5 * Matrix2d::Identity();
     ProjectionTdFactor::sqrt_info = FOCAL_LENGTH / 1.5 * Matrix2d::Identity();
 #else
-    ProjectionFactor::sqrt_info = 600 * Matrix2d::Identity();
-    ProjectionTdFactor::sqrt_info = 600 * Matrix2d::Identity();
+    StereoProjectionFactor::sqrt_info = 600 * Matrix4d::Identity();
+    StereoProjectionTdFactor::sqrt_info = 600 * Matrix2d::Identity();
 #endif
     td = TD;
 }
@@ -729,6 +729,7 @@ void Estimator::optimization()
         int imu_i = it_per_id.start_frame, imu_j = imu_i - 1;
         
         Vector3d pts_i = it_per_id.feature_per_frame[0].point;
+        Vector3d pts_i_r = it_per_id.feature_per_frame[0].point1;
 
         for (auto &it_per_frame : it_per_id.feature_per_frame)
         {
@@ -738,9 +739,10 @@ void Estimator::optimization()
                 continue;
             }
             Vector3d pts_j = it_per_frame.point;
+            Vector3d pts_j_r = it_per_frame.point1;
             if (ESTIMATE_TD)
             {
-                    ProjectionTdFactor *f_td = new ProjectionTdFactor(pts_i, pts_j, it_per_id.feature_per_frame[0].velocity, it_per_frame.velocity,
+                    StereoProjectionTdFactor *f_td = new StereoProjectionTdFactor(pts_i, pts_j, it_per_id.feature_per_frame[0].velocity, it_per_frame.velocity,
                                                                      it_per_id.feature_per_frame[0].cur_td, it_per_frame.cur_td,
                                                                      it_per_id.feature_per_frame[0].uv.y(), it_per_frame.uv.y());
                     problem.AddResidualBlock(f_td, loss_function, para_Pose[imu_i], para_Pose[imu_j], para_Ex_Pose[0], para_Feature[feature_index], para_Td[0]);
@@ -756,7 +758,7 @@ void Estimator::optimization()
             }
             else
             {
-                ProjectionFactor *f = new ProjectionFactor(pts_i, pts_j);
+                StereoProjectionFactor *f = new StereoProjectionFactor(pts_i, pts_j, pts_i_r, pts_j_r);
                 problem.AddResidualBlock(f, loss_function, para_Pose[imu_i], para_Pose[imu_j], para_Ex_Pose[0], para_Feature[feature_index]);
             }
             f_m_cnt++;
@@ -790,8 +792,8 @@ void Estimator::optimization()
                 {
                     Vector3d pts_j = Vector3d(match_points[retrive_feature_index].x(), match_points[retrive_feature_index].y(), 1.0);
                     Vector3d pts_i = it_per_id.feature_per_frame[0].point;
-                    
-                    ProjectionFactor *f = new ProjectionFactor(pts_i, pts_j);
+
+                    MonoProjectionFactor *f = new MonoProjectionFactor(pts_i, pts_j);
                     problem.AddResidualBlock(f, loss_function, para_Pose[start], relo_Pose, para_Ex_Pose[0], para_Feature[feature_index]);
                     retrive_feature_index++;
                 }     
@@ -885,6 +887,7 @@ void Estimator::optimization()
                     continue;
 
                 Vector3d pts_i = it_per_id.feature_per_frame[0].point;
+                Vector3d pts_i_r = it_per_id.feature_per_frame[0].point1;
 
                 for (auto &it_per_frame : it_per_id.feature_per_frame)
                 {
@@ -893,9 +896,10 @@ void Estimator::optimization()
                         continue;
 
                     Vector3d pts_j = it_per_frame.point;
+                    Vector3d pts_j_r = it_per_frame.point1;
                     if (ESTIMATE_TD)
                     {
-                        ProjectionTdFactor *f_td = new ProjectionTdFactor(pts_i, pts_j, it_per_id.feature_per_frame[0].velocity, it_per_frame.velocity,
+                        StereoProjectionTdFactor *f_td = new StereoProjectionTdFactor(pts_i, pts_j, it_per_id.feature_per_frame[0].velocity, it_per_frame.velocity,
                                                                           it_per_id.feature_per_frame[0].cur_td, it_per_frame.cur_td,
                                                                           it_per_id.feature_per_frame[0].uv.y(), it_per_frame.uv.y());
                         ResidualBlockInfo *residual_block_info = new ResidualBlockInfo(f_td, loss_function,
@@ -905,7 +909,7 @@ void Estimator::optimization()
                     }
                     else
                     {
-                        ProjectionFactor *f = new ProjectionFactor(pts_i, pts_j);
+                        StereoProjectionFactor *f = new StereoProjectionFactor(pts_i, pts_j, pts_i_r, pts_j_r);
                         ResidualBlockInfo *residual_block_info = new ResidualBlockInfo(f, loss_function,
                                                                                        vector<double *>{para_Pose[imu_i], para_Pose[imu_j], para_Ex_Pose[0], para_Feature[feature_index]},
                                                                                        vector<int>{0, 3});
