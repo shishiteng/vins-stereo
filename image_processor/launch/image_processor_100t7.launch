@@ -25,7 +25,8 @@
 
       <param name="equalize" value="0"/>
 
-      <param name="debug_tracking" value="1"/>
+      <param name="debug_tracking" value="0"/>
+      <param name="unified_camera_model" value="0"/>
       <param name="check_orb" value="0"/>
       <param name="check_stereo" value="1"/>
       <param name="check_circle" value="1"/>

@@ -62,6 +62,9 @@ bool StereoProjectionFactor::Evaluate(double const *const *parameters, double *r
     double dep_j_r = pts_camera_j_r.z();
     residual.tail<2>() = (pts_camera_j_r / dep_j_r).head<2>() - pts_j_r.head<2>();
 
+    //左右目对齐后视差只存在x方向，y方向的视差属于误差，不应该去优化它
+    //如果y方向也加入优化，会把双目匹配误差引入最终结果，导致这个方向偏差较大
+    residual[3] = 0;
 #endif
 
     //double observation_noise = 0.35*0.35;

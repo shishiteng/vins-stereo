@@ -177,6 +177,7 @@ bool ImageProcessor::loadParameters()
 
   //
   nh.param<int>("debug_tracking", processor_config.debug_tracking, 0);
+  nh.param<int>("unified_camera_model", processor_config.unified_camera_model, 0);
   nh.param<int>("check_orb", processor_config.check_orb, 0);
   nh.param<int>("check_stereo", processor_config.check_stereo, 0);
   nh.param<int>("check_circle", processor_config.check_circle, 0);
@@ -1589,7 +1590,10 @@ void ImageProcessor::publish()
 {
   publishMsckfFeatures();
 
-  publishVinsFeatures();
+  if(processor_config.unified_camera_model)
+    publishVinsFeatures();
+  else
+    publishVinsFeaturesCV();
 }
 
 void ImageProcessor::publishMsckfFeatures()
@@ -1814,6 +1818,137 @@ void ImageProcessor::publishVinsFeatures()
       velocity_y_of_point.values.push_back(curr_cam1_point_velocity.y);
     }
   }
+  cam0_prev_unpts_map = cam0_curr_unpts_map;
+  cam1_prev_unpts_map = cam1_curr_unpts_map;
+
+  feature_points->channels.push_back(id_of_point);
+  feature_points->channels.push_back(u_of_point);
+  feature_points->channels.push_back(v_of_point);
+  feature_points->channels.push_back(velocity_x_of_point);
+  feature_points->channels.push_back(velocity_y_of_point);
+
+  // publish
+  if (frame_count++ % 2 == 1)
+    feature2_pub.publish(feature_points);
+
+  return;
+}
+
+// no camera model
+void ImageProcessor::publishVinsFeaturesCV()
+{
+  if (NULL == cam0_prev_img_ptr || NULL == cam0_curr_img_ptr)
+    return;
+  
+  vector<FeatureIDType> curr_ids(0);
+  vector<Point2f> curr_cam0_points(0);
+  vector<Point2f> curr_cam1_points(0);
+  vector<Point2f> curr_cam0_points_velocity(0);
+  vector<Point2f> curr_cam1_points_velocity(0);
+
+  sensor_msgs::PointCloudPtr feature_points(new sensor_msgs::PointCloud);
+  feature_points->header.stamp = cam0_curr_img_ptr->header.stamp;
+  sensor_msgs::ChannelFloat32 id_of_point;
+  sensor_msgs::ChannelFloat32 u_of_point;
+  sensor_msgs::ChannelFloat32 v_of_point;
+  sensor_msgs::ChannelFloat32 velocity_x_of_point;
+  sensor_msgs::ChannelFloat32 velocity_y_of_point;
+
+  id_of_point.name = "id";
+  u_of_point.name = "undistorted_x";
+  v_of_point.name = "undistorted_y";
+  velocity_x_of_point.name = "velocity_x";
+  velocity_y_of_point.name = "velocity_y";
+
+  double dt = cam0_curr_img_ptr->header.stamp.toSec() - cam0_prev_img_ptr->header.stamp.toSec();
+  //cerr<<" delta_t:"<<dt<<endl;
+  cam0_curr_unpts_map.clear();
+  cam1_curr_unpts_map.clear();
+
+  for (const auto &grid_features : (*curr_features_ptr))
+  {
+    for (const auto &feature : grid_features.second)
+    {
+      //if(feature.cam0_point.y > 240.0) continue;
+      //cout<<feature.cam0_point<<endl;
+      curr_ids.push_back(feature.id);
+      curr_cam0_points.push_back(feature.cam0_point);
+      curr_cam1_points.push_back(feature.cam1_point);
+    }
+  }
+
+  vector<Point2f> curr_cam0_points_undistorted(0);
+  vector<Point2f> curr_cam1_points_undistorted(0);
+
+  undistortPoints(
+      curr_cam0_points, cam0_intrinsics, cam0_distortion_model,
+      cam0_distortion_coeffs, curr_cam0_points_undistorted);
+  undistortPoints(
+      curr_cam1_points, cam1_intrinsics, cam1_distortion_model,
+      cam1_distortion_coeffs, curr_cam1_points_undistorted);
+
+  int n = 0;
+  for (int i = 0; i < curr_ids.size(); ++i)
+  {
+    Point2f curr_cam0_point(curr_cam0_points[i].x, curr_cam0_points[i].y);
+    Point2f curr_cam1_point(curr_cam1_points[i].x, curr_cam1_points[i].y);
+    Point2f curr_cam0_point_velocity(0, 0);
+    Point2f curr_cam1_point_velocity(0, 0);
+    int id = curr_ids[i];
+
+    // 1.left 
+    geometry_msgs::Point32 p;
+    p.x = curr_cam0_points_undistorted[i].x;
+    p.y = curr_cam0_points_undistorted[i].y;
+    p.z = 1;
+
+    //计算光流速度
+    cam0_curr_unpts_map.insert(make_pair(id, cv::Point2f(p.x, p.y)));
+    if (!cam0_prev_unpts_map.empty())
+    {
+      std::map<int, cv::Point2f>::iterator it = cam0_prev_unpts_map.find(id);
+      if (it != cam0_prev_unpts_map.end())
+      {
+        double v_x = (p.x - it->second.x) / dt;
+        double v_y = (p.y - it->second.y) / dt;
+        curr_cam0_point_velocity = cv::Point2f(v_x, v_y);
+      }
+    }
+
+    feature_points->points.push_back(p);
+    id_of_point.values.push_back(id);
+    u_of_point.values.push_back(curr_cam0_point.x);
+    v_of_point.values.push_back(curr_cam0_point.y);
+    velocity_x_of_point.values.push_back(curr_cam0_point_velocity.x);
+    velocity_y_of_point.values.push_back(curr_cam0_point_velocity.y);
+    
+    // 2.right
+    geometry_msgs::Point32 p1;
+    p1.x = curr_cam1_points_undistorted[i].x;
+    p1.y = curr_cam1_points_undistorted[i].y;
+    p1.z = 1;
+
+    //计算光流速度
+    cam1_curr_unpts_map.insert(make_pair(id, cv::Point2f(p1.x, p1.y)));
+    if (!cam1_prev_unpts_map.empty())
+    {
+      std::map<int, cv::Point2f>::iterator it1 = cam1_prev_unpts_map.find(id);
+      if (it1 != cam1_prev_unpts_map.end())
+      {
+        double v_x = (p1.x - it1->second.x) / dt;
+        double v_y = (p1.y - it1->second.y) / dt;
+        curr_cam1_point_velocity = cv::Point2f(v_x, v_y);
+      }
+    }
+
+    feature_points->points.push_back(p1);
+    id_of_point.values.push_back(id);
+    u_of_point.values.push_back(curr_cam1_point.x);
+    v_of_point.values.push_back(curr_cam1_point.y);
+    velocity_x_of_point.values.push_back(curr_cam1_point_velocity.x);
+    velocity_y_of_point.values.push_back(curr_cam1_point_velocity.y);
+  }
+
   cam0_prev_unpts_map = cam0_curr_unpts_map;
   cam1_prev_unpts_map = cam1_curr_unpts_map;
 

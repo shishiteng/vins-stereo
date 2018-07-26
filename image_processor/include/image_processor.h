@@ -70,6 +70,7 @@ private:
 
     int equalize;
     int debug_tracking;
+    int unified_camera_model;
     int check_orb;
     int check_circle;
     int check_stereo;
@@ -202,9 +203,11 @@ private:
    */
   void publish();
 
-   void publishVinsFeatures();
+  void publishVinsFeatures();
 
-   void publishMsckfFeatures();
+  void publishVinsFeaturesCV();
+
+  void publishMsckfFeatures();
 
   /*
    * @brief drawFeaturesMono
@@ -429,7 +432,7 @@ private:
     sensor_msgs::Image, sensor_msgs::Image> stereo_sub;
   ros::Subscriber imu_sub;
   ros::Publisher feature_pub;
-  ros::Publisher feature2_pub;
+  ros::Publisher feature2_pub; //vins_features
   ros::Publisher tracking_info_pub;
   image_transport::Publisher debug_stereo_pub;
 
