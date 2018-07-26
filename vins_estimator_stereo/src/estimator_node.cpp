@@ -237,6 +237,7 @@ void process()
                     rz = imu_msg->angular_velocity.z;
                     estimator.processIMU(dt, Vector3d(dx, dy, dz), Vector3d(rx, ry, rz));
                     //printf("imu: dt:%f a: %f %f %f w: %f %f %f\n",dt, dx, dy, dz, rx, ry, rz);
+                    ROS_DEBUG("processing imu data with stamp %f", imu_msg->header.stamp.toSec());
                 }
                 else
                 {
@@ -256,6 +257,7 @@ void process()
                     rz = w1 * rz + w2 * imu_msg->angular_velocity.z;
                     estimator.processIMU(dt_1, Vector3d(dx, dy, dz), Vector3d(rx, ry, rz));
                     //printf("dimu: dt:%f a: %f %f %f w: %f %f %f\n",dt_1, dx, dy, dz, rx, ry, rz);
+                    ROS_DEBUG("interpolate  data with stamp %f", img_msg->header.stamp.toSec());
                 }
             }
             // set relocalization frame
@@ -285,7 +287,7 @@ void process()
                 estimator.setReloFrame(frame_stamp, frame_index, match_points, relo_t, relo_r);
             }
 
-            ROS_DEBUG("processing vision data with stamp %f \n", img_msg->header.stamp.toSec());
+            ROS_DEBUG("processing vision data with stamp %f", img_msg->header.stamp.toSec());
 
             TicToc t_s;
             map<int, vector<pair<int, Eigen::Matrix<double, 7 * 2, 1>>>> image;

@@ -1,6 +1,7 @@
 #include "visualization.h"
 
 #include "std_msgs/String.h"
+#include "rospy_tutorials/HeaderString.h"
 
 using namespace ros;
 using namespace Eigen;
@@ -18,6 +19,7 @@ ros::Publisher pub_keyframe_point;
 ros::Publisher pub_extrinsic;
 
 ros::Publisher pub_solver_summary;
+ros::Publisher pub_solver_report;
 
 CameraPoseVisualization cameraposevisual(0, 1, 0, 1);
 CameraPoseVisualization keyframebasevisual(0.0, 0.0, 1.0, 1.0);
@@ -40,6 +42,7 @@ void registerPub(ros::NodeHandle &n)
     pub_extrinsic = n.advertise<nav_msgs::Odometry>("extrinsic", 1000);
     pub_relo_relative_pose = n.advertise<nav_msgs::Odometry>("relo_relative_pose", 1000);
     pub_solver_summary = n.advertise<std_msgs::String>("solver_summary", 10);
+    pub_solver_report = n.advertise<rospy_tutorials::HeaderString>("solver_report", 10);
 
     cameraposevisual.setScale(1);
     cameraposevisual.setLineWidth(0.05);
@@ -194,6 +197,12 @@ void pubOdometry(const Estimator &estimator, const std_msgs::Header &header)
             str.data = str.data + string(s);
         }
         pub_solver_summary.publish(str);
+
+        // publish full report
+        rospy_tutorials::HeaderString str_msg;
+        str_msg.header = header;
+        str_msg.data = estimator.ceres_summary.report;
+        pub_solver_report.publish(str_msg);
     }
 }
 

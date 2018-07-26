@@ -7,7 +7,7 @@ extern Eigen::Vector3d tc21;
 extern Eigen::Quaterniond qc21;
 
 #ifdef UNIT_SPHERE_ERROR
-#undefine UNIT_SPHERE_ERROR
+#undef UNIT_SPHERE_ERROR
 #endif
 
 StereoProjectionFactor::StereoProjectionFactor(const Eigen::Vector3d &_pts_i,
@@ -64,6 +64,8 @@ bool StereoProjectionFactor::Evaluate(double const *const *parameters, double *r
 
 #endif
 
+    //double observation_noise = 0.35*0.35;
+    //residual = sqrt_info*residual + observation_noise*Eigen::Vector4d::Identity();
     residual = sqrt_info * residual;
 
     if (jacobians)

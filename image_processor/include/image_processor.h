@@ -76,6 +76,7 @@ private:
     int check_ransac;
     
     double timeshift;
+    double virtual_focal_length;
   };
 
   /*

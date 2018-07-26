@@ -128,6 +128,9 @@ bool ImageProcessor::loadParameters()
   //timeshift: t_imu=t_cam+timeshift
   nh.param<double>("cam0/timeshift_cam_imu", processor_config.timeshift, 0);
 
+  //virtual_focal_length
+  nh.param<double>("virtual_focal_length", processor_config.virtual_focal_length, 100);
+
   cv::Mat T_imu_cam0 = myutils::getTransformCV(nh, "cam0/T_cam_imu");
   cv::Matx33d R_imu_cam0(T_imu_cam0(cv::Rect(0, 0, 3, 3)));
   cv::Vec3d t_imu_cam0 = T_imu_cam0(cv::Rect(3, 0, 1, 3));
@@ -1626,10 +1629,11 @@ void ImageProcessor::publishMsckfFeatures()
 
   if (processor_config.debug_tracking)
   {
+    float virtual_focal_len = processor_config.virtual_focal_length;
     int w = cam0_curr_img_ptr->image.cols;
     int h = cam0_curr_img_ptr->image.rows;
-    float cx = (float)w / 200.;
-    float cy = (float)h / 200.;
+    float cx = (float)w / (2*virtual_focal_len);
+    float cy = (float)h / (2*virtual_focal_len);
 
     cv::Mat show(2 * h, 2 * w, cam0_curr_img_ptr->image.type());
     show.setTo(cv::Scalar(255, 255, 255));
@@ -1648,9 +1652,9 @@ void ImageProcessor::publishMsckfFeatures()
       cv::Vec3d vec_(curr_cam1_points_undistorted[i].x, curr_cam1_points_undistorted[i].y, 1);
       cv::Vec3d vec1 = R_cam1_cam0 * vec_;
       cv::Point2f p0(vec[0] + cx, vec[1] + cy);
-      p0 = p0 * 100 + cv::Point2f(0, h);
+      p0 = p0 * virtual_focal_len + cv::Point2f(0, h);
       cv::Point2f p1(vec1[0] / vec1[2] + cx, vec1[1] / vec1[2] + cy);
-      p1 = p1 * 100 + cv::Point2f(w, h);
+      p1 = p1 * virtual_focal_len + cv::Point2f(w, h);
 
       Scalar color = Scalar(0, 255, 0);
       int r = 3;
@@ -2110,8 +2114,9 @@ void ImageProcessor::checkWithStereo(std::vector<cv::Point2f> cam0_points,
 
   float w = cam0_curr_img_ptr->image.cols;
   float h = cam0_curr_img_ptr->image.rows;
-  float cx = w / 200.;
-  float cy = h / 200.;
+  float virtual_focal_len = processor_config.virtual_focal_length;
+  float cx = w / (2*virtual_focal_len);
+  float cy = h / (2*virtual_focal_len);
   for (int i = 0; i < cam0_points.size(); ++i)
   {
     if (inliers[i] == 0)
@@ -2121,9 +2126,9 @@ void ImageProcessor::checkWithStereo(std::vector<cv::Point2f> cam0_points,
     cv::Vec3d vec_(cam1_points_undistorted[i].x, cam1_points_undistorted[i].y, 1);
     cv::Vec3d vec1 = R_cam1_cam0 * vec_;
     cv::Point2f p0(vec[0] + cx, vec[1] + cy);
-    p0 = p0 * 100 + cv::Point2f(0, h);
+    p0 = p0 * virtual_focal_len + cv::Point2f(0, h);
     cv::Point2f p1(vec1[0] / vec1[2] + cx, vec1[1] / vec1[2] + cy);
-    p1 = p1 * 100 + cv::Point2f(w, h);
+    p1 = p1 * virtual_focal_len + cv::Point2f(w, h);
 
     if ((p1.x - w) > p0.x || fabsf(p1.y - p0.y) > 1)
     {
