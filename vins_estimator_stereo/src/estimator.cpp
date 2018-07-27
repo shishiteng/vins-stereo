@@ -1,5 +1,8 @@
 #include "estimator.h"
 
+static Vector3d Ps_prev(0,0,0);
+static Matrix3d Rs_prev = Matrix3d::Identity();
+
 Estimator::Estimator() : f_manager{Rs}
 {
     ROS_INFO("init begins");
@@ -116,6 +119,8 @@ void Estimator::processIMU(double dt, const Vector3d &linear_acceleration, const
     gyr_0 = angular_velocity;
 }
 
+
+
 void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<double, 7 * 2, 1>>>> &image, const std_msgs::Header &header)
 {
     ROS_DEBUG("new image coming ------------------------------------------");
@@ -135,6 +140,26 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
     imageframe.pre_integration = tmp_pre_integration;
     all_image_frame.insert(make_pair(header.stamp.toSec(), imageframe));
     tmp_pre_integration = new IntegrationBase{acc_0, gyr_0, Bas[frame_count], Bgs[frame_count]};
+
+#if 0
+    if(frame_count > 1 && solver_flag != INITIAL)
+    {
+        Vector3d delta_p = Ps[frame_count] - Ps_prev;
+        Matrix3d delta_q =  Rs[frame_count].inverse() * Rs_prev;
+        Quaterniond delta_Q(delta_q);
+        double delta_angle = acos(delta_Q.w()) * 2.0 / 3.14 * 180.0;
+        //double norm_vel = sqrt(pow(Vs[frame_count][0], 2) + pow(Vs[frame_count][1], 2) + pow(Vs[frame_count][2], 2));
+        double norm_pos = sqrt(pow(delta_p[0], 2) + pow(delta_p[1], 2) + pow(delta_p[2], 2));
+        //cout << " imu velocity:"<< Vs[frame_count].transpose() << " |" <<norm_vel<<"  |" <<norm_pos<<endl;
+        fflush(stderr);
+        fprintf(stderr,"  %.4f, %.3f\n",norm_pos,delta_angle);
+        if(norm_pos < 0.002 && delta_angle < 0.05) // 2mm && 0.05度
+            fprintf(stderr,"静止啦!\n");
+
+        Ps_prev = Ps[frame_count];
+        Rs_prev = Rs[frame_count];
+    }
+#endif
 
     if (ESTIMATE_EXTRINSIC == 2)
     {

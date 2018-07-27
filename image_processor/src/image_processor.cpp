@@ -855,11 +855,11 @@ void ImageProcessor::trackFeatures()
     curr_feature_num += item.second.size();
 
   ROS_DEBUG_THROTTLE(0.5,
-                    "\033[0;32m candidates: %d; track: %d; match: %d; ransac: %d/%d=%f\033[0m",
-                    before_tracking, after_tracking, after_matching,
-                    curr_feature_num, prev_feature_num,
-                    static_cast<double>(curr_feature_num) /
-                        (static_cast<double>(prev_feature_num) + 1e-5));
+                     "\033[0;32m candidates: %d; track: %d; match: %d; ransac: %d/%d=%f\033[0m",
+                     before_tracking, after_tracking, after_matching,
+                     curr_feature_num, prev_feature_num,
+                     static_cast<double>(curr_feature_num) /
+                         (static_cast<double>(prev_feature_num) + 1e-5));
   //printf(
   //    "\033[0;32m candidates: %d; raw track: %d; stereo match: %d; ransac: %d/%d=%f\033[0m\n",
   //    before_tracking, after_tracking, after_matching,
@@ -1264,12 +1264,30 @@ void ImageProcessor::integrateImuData(
 
   // Compute the mean angular velocity in the IMU frame.
   Vec3f mean_ang_vel(0.0, 0.0, 0.0);
+  Vec3f mean_linear_acc(0.0, 0.0, 0.0);
   for (auto iter = begin_iter; iter < end_iter; ++iter)
-    mean_ang_vel += Vec3f(iter->angular_velocity.x,
-                          iter->angular_velocity.y, iter->angular_velocity.z);
+  {
+    mean_ang_vel += Vec3f(iter->angular_velocity.x, iter->angular_velocity.y, iter->angular_velocity.z);
+    mean_linear_acc += Vec3f(iter->linear_acceleration.x, iter->linear_acceleration.y, iter->linear_acceleration.z);
+  }
 
   if (end_iter - begin_iter > 0)
+  {
     mean_ang_vel *= 1.0f / (end_iter - begin_iter);
+    mean_linear_acc *= 1.0f / (end_iter - begin_iter);
+  }
+
+  if(0)
+  {
+    double norm_gyr = sqrt(pow(mean_ang_vel[0], 2) + pow(mean_ang_vel[1], 2) + pow(mean_ang_vel[2], 2));
+    double norm_acc = sqrt(pow(mean_linear_acc[0], 2) + pow(mean_linear_acc[1], 2) + pow(mean_linear_acc[2], 2));
+    cout << "mean_ang_vel: " << mean_ang_vel << "  |" << fabs(norm_gyr) << endl;
+    cout << "mean_linear_acc: " << mean_linear_acc << "  |" << fabs(norm_acc - 9.8) << endl;
+    // 角度：1秒5度，位置：1秒0.5mm，20fps@200hz下加速度必须小于0.4m/s^2
+    // 这里要考虑噪声，所以稍微设置宽松一点
+    if (fabs(norm_gyr) < 5 / 57.3f && fabs(norm_acc - 9.8) < 0.05)
+      cout << "静止啦！！！！" << endl;
+  }
 
   // Transform the mean angular velocity from the IMU
   // frame to the cam0 and cam1 frames.
@@ -1590,7 +1608,7 @@ void ImageProcessor::publish()
 {
   publishMsckfFeatures();
 
-  if(processor_config.unified_camera_model)
+  if (processor_config.unified_camera_model)
     publishVinsFeatures();
   else
     publishVinsFeaturesCV();
@@ -1636,8 +1654,8 @@ void ImageProcessor::publishMsckfFeatures()
     float virtual_focal_len = processor_config.virtual_focal_length;
     int w = cam0_curr_img_ptr->image.cols;
     int h = cam0_curr_img_ptr->image.rows;
-    float cx = (float)w / (2*virtual_focal_len);
-    float cy = (float)h / (2*virtual_focal_len);
+    float cx = (float)w / (2 * virtual_focal_len);
+    float cy = (float)h / (2 * virtual_focal_len);
 
     cv::Mat show(2 * h, 2 * w, cam0_curr_img_ptr->image.type());
     show.setTo(cv::Scalar(255, 255, 255));
@@ -1839,7 +1857,7 @@ void ImageProcessor::publishVinsFeaturesCV()
 {
   if (NULL == cam0_prev_img_ptr || NULL == cam0_curr_img_ptr)
     return;
-  
+
   vector<FeatureIDType> curr_ids(0);
   vector<Point2f> curr_cam0_points(0);
   vector<Point2f> curr_cam1_points(0);
@@ -1896,7 +1914,7 @@ void ImageProcessor::publishVinsFeaturesCV()
     Point2f curr_cam1_point_velocity(0, 0);
     int id = curr_ids[i];
 
-    // 1.left 
+    // 1.left
     geometry_msgs::Point32 p;
     p.x = curr_cam0_points_undistorted[i].x;
     p.y = curr_cam0_points_undistorted[i].y;
@@ -1921,7 +1939,7 @@ void ImageProcessor::publishVinsFeaturesCV()
     v_of_point.values.push_back(curr_cam0_point.y);
     velocity_x_of_point.values.push_back(curr_cam0_point_velocity.x);
     velocity_y_of_point.values.push_back(curr_cam0_point_velocity.y);
-    
+
     // 2.right
     geometry_msgs::Point32 p1;
     p1.x = curr_cam1_points_undistorted[i].x;
@@ -2250,8 +2268,8 @@ void ImageProcessor::checkWithStereo(std::vector<cv::Point2f> cam0_points,
   float w = cam0_curr_img_ptr->image.cols;
   float h = cam0_curr_img_ptr->image.rows;
   float virtual_focal_len = processor_config.virtual_focal_length;
-  float cx = w / (2*virtual_focal_len);
-  float cy = h / (2*virtual_focal_len);
+  float cx = w / (2 * virtual_focal_len);
+  float cy = h / (2 * virtual_focal_len);
   for (int i = 0; i < cam0_points.size(); ++i)
   {
     if (inliers[i] == 0)
