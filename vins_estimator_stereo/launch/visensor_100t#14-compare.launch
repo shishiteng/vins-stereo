@@ -3,7 +3,7 @@
 
     <arg name="config_path_160" default = "$(find vins_estimator)/../config/visensor_100t#14/visensor_100t#14-160.yaml" />
     <arg name="config_path_9250" default = "$(find vins_estimator)/../config/visensor_100t#14/visensor_100t#14-9250.yaml" />
-    <arg name="vins_path" default = "$(find feature_tracker)/../config/../" />
+    <arg name="vins_path" default = "$(find vins_estimator)/../config/../" />
 
     <include file="$(find image_processor)/launch/image_processor_100t14.launch"/>
 

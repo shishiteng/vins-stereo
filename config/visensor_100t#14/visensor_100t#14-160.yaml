@@ -46,7 +46,19 @@ extrinsicTranslation: !!opencv-matrix
    dt: d
    data: [ 0.007534813791893386, 0.09088013983370465,  0.0027230159918666718]
 
-#data: [ -0.06390759, 0.00191791,  0.03130562]
+stereoRotation: !!opencv-matrix
+   rows: 3
+   cols: 3
+   dt: d
+   data: [0.9999937376404091, -0.00026539258488127593, -0.0035290574856257782,
+          0.0002588685222140577, 0.9999982570946933, -0.0018489982856398398,
+          0.003529542045247232, 0.001848073144651583, 0.9999920634478051]
+#Translation from camera frame to imu frame, imu^T_cam
+stereoTranslation: !!opencv-matrix
+   rows: 3
+   cols: 1
+   dt: d
+   data: [-0.07480350977811673,0.0003216683110021111,-0.0005091817629381968]
 
 #feature traker paprameters
 
@@ -81,9 +93,22 @@ gyr_w: 0.000022       # gyroscope bias random work noise standard deviation. 6e-
 g_norm: 9.8       #
 
 
+
 #loop closure parameters
-loop_closure: 0    #if you want to use loop closure to minimize the drift, set loop_closure true and give your brief pattern file path and vocabulary file path accordingly;
-                     #also give the camera calibration file same as feature_tracker node
-pattern_file: "/support_files/brief_pattern.yml"
-voc_file: "/support_files/brief_k10L6.bin"
-min_loop_num: 20
+loop_closure: 1                    # start loop closure
+load_previous_pose_graph: 0        # load and reuse previous pose graph; load from 'pose_graph_save_path'
+fast_relocalization: 0             # useful in real-time and large project
+pose_graph_save_path: "/home/sst/catkin_vinsstereo/output/pose_graph/" # save and load path
+
+#unsynchronization parameters
+estimate_td: 0                     # online estimate time offset between camera and imu
+td: 0.0                             # initial value of time offset. unit: s. readed image clock + td = real image clock (IMU clock)
+
+#rolling shutter parameters
+rolling_shutter: 0                  # 0: global shutter camera, 1: rolling shutter camera
+rolling_shutter_tr: 0               # unit: s. rolling shutter read out time per frame (from data sheet). 
+
+#visualization parameters
+save_image: 1                   # save image in pose graph for visualization prupose; you can close this function by setting 0 
+visualize_imu_forward: 1        # output imu forward propogation to achieve low latency and high frequence results
+visualize_camera_size: 0.4      # size of camera marker in RVIZ

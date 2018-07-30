@@ -338,9 +338,9 @@ void process()
 
         if (pose_msg != NULL)
         {
-            ROS_DEBUG(" pose time %f", pose_msg->header.stamp.toSec());
-            ROS_DEBUG(" point time %f", point_msg->header.stamp.toSec());
-            ROS_DEBUG(" image time %f", image_msg->header.stamp.toSec());
+            //ROS_DEBUG(" pose time %f", pose_msg->header.stamp.toSec());
+            //ROS_DEBUG(" point time %f", point_msg->header.stamp.toSec());
+            //ROS_DEBUG(" image time %f", image_msg->header.stamp.toSec());
             // skip fisrt few
             if (skip_first_cnt < SKIP_FIRST_CNT)
             {

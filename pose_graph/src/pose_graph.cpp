@@ -76,7 +76,7 @@ void PoseGraph::addKeyFrame(KeyFrame* cur_kf, bool flag_detect_loop)
     }
 	if (loop_index != -1)
 	{
-        //printf(" %d detect loop with %d \n", cur_kf->index, loop_index);
+        ROS_DEBUG(" %d detect loop with %d", cur_kf->index, loop_index);
         KeyFrame* old_kf = getKeyFrame(loop_index);
 
         if (cur_kf->findConnection(old_kf))
@@ -127,6 +127,10 @@ void PoseGraph::addKeyFrame(KeyFrame* cur_kf, bool flag_detect_loop)
             m_optimize_buf.lock();
             optimize_buf.push(cur_kf->index);
             m_optimize_buf.unlock();
+        } 
+        else 
+        {
+            ROS_DEBUG(" find connection failed.");
         }
 	}
 	m_keyframelist.lock();
@@ -311,6 +315,7 @@ int PoseGraph::detectLoop(KeyFrame* keyframe, int frame_index)
     {
         int feature_num = keyframe->keypoints.size();
         cv::resize(keyframe->image, compressed_image, cv::Size(376, 240));
+        cv::rectangle(compressed_image, cv::Rect(0,0,200,50), cv::Scalar(0, 0, 0),CV_FILLED);
         putText(compressed_image, "feature_num:" + to_string(feature_num), cv::Point2f(10, 10), CV_FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(255));
         image_pool[frame_index] = compressed_image;
     }
@@ -332,57 +337,72 @@ int PoseGraph::detectLoop(KeyFrame* keyframe, int frame_index)
     //printf("add feature time: %f", t_add.toc());
     // ret[0] is the nearest neighbour's score. threshold change with neighour score
     bool find_loop = false;
-    cv::Mat loop_result;
+    cv::Mat loop_result,match_result;
     if (DEBUG_IMAGE)
     {
         loop_result = compressed_image.clone();
-        if (ret.size() > 0)
+        //match_result = compressed_image.clone();
+        if (ret.size() > 0) 
+        {
+            //cv::rectangle(loop_result, cv::Rect(0,0,200,50), cv::Scalar(0, 0, 0),CV_FILLED);
             putText(loop_result, "neighbour score:" + to_string(ret[0].Score), cv::Point2f(10, 50), CV_FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255));
+        }     
     }
     // visual loop result 
     if (DEBUG_IMAGE)
     {
         for (unsigned int i = 0; i < ret.size(); i++)
         {
+            if (ret[i].Score < 0.04)
+                continue;
             int tmp_index = ret[i].Id;
             auto it = image_pool.find(tmp_index);
             cv::Mat tmp_image = (it->second).clone();
-            putText(tmp_image, "index:  " + to_string(tmp_index) + "loop score:" + to_string(ret[i].Score), cv::Point2f(10, 50), CV_FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255));
+            cv::rectangle(tmp_image, cv::Rect(0,0,200,50), cv::Scalar(0, 0, 0),CV_FILLED);
+            putText(tmp_image, "index:  " + to_string(tmp_index), cv::Point2f(10, 30), CV_FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255));
+            putText(tmp_image, "loop score:" + to_string(ret[i].Score), cv::Point2f(10, 50), CV_FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255));
             cv::hconcat(loop_result, tmp_image, loop_result);
+
+            //if(0 == i && ret[i].Score > 0.05)
+                //cv::hconcat(match_result, tmp_image, match_result);
         }
     }
-    // a good match with its nerghbour
+    // a good match with its neighbour
     if (ret.size() >= 1 &&ret[0].Score > 0.05)
         for (unsigned int i = 1; i < ret.size(); i++)
         {
             //if (ret[i].Score > ret[0].Score * 0.3)
-            if (ret[i].Score > 0.015)
+            //if (ret[i].Score > 0.015)
+            if (ret[i].Score > 0.04)
             {          
-                find_loop = true;
-                int tmp_index = ret[i].Id;
-                if (DEBUG_IMAGE && 0)
+                find_loop = true;  
+                if (DEBUG_IMAGE)
                 {
+                    int tmp_index = ret[i].Id;
                     auto it = image_pool.find(tmp_index);
                     cv::Mat tmp_image = (it->second).clone();
-                    putText(tmp_image, "loop score:" + to_string(ret[i].Score), cv::Point2f(10, 50), CV_FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(255));
-                    cv::hconcat(loop_result, tmp_image, loop_result);
+                    cv::rectangle(tmp_image, cv::Rect(0,0,200,50), cv::Scalar(0, 0, 0),CV_FILLED);
+                    putText(tmp_image, "loop score:" + to_string(ret[i].Score), cv::Point2f(10, 50), CV_FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255));
+                    //cv::hconcat(match_result, tmp_image, match_result);
                 }
             }
 
         }
-/*
+
     if (DEBUG_IMAGE)
     {
         cv::imshow("loop_result", loop_result);
+        //cv::imshow("match_result", match_result);
         cv::waitKey(20);
     }
-*/
+
     if (find_loop && frame_index > 50)
     {
         int min_index = -1;
         for (unsigned int i = 0; i < ret.size(); i++)
         {
-            if (min_index == -1 || (ret[i].Id < min_index && ret[i].Score > 0.015))
+            //if (min_index == -1 || (ret[i].Id < min_index && ret[i].Score > 0.015))
+            if (min_index == -1 || (ret[i].Id < min_index && ret[i].Score > 0.04))
                 min_index = ret[i].Id;
         }
         return min_index;
