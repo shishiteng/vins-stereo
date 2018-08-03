@@ -12,7 +12,7 @@
 
       <rosparam command="load" file="$(arg calibration_file)"/>
       <param name="grid_row" value="8"/>
-      <param name="grid_col" value="8"/>
+      <param name="grid_col" value="16"/>
       <param name="grid_min_feature_num" value="1"/>
       <param name="grid_max_feature_num" value="1"/>
       <param name="pyramid_levels" value="4"/>
@@ -23,15 +23,16 @@
       <param name="ransac_threshold" value="3"/>
       <param name="stereo_threshold" value="5"/>
 
-      <param name="equalize" value="0"/>
-
       <param name="debug_tracking" value="0"/>
       <param name="unified_camera_model" value="0"/>
+      <param name="virtual_focal_length" value="400"/>
+      <param name="equalize" value="0"/>
+
       <param name="check_orb" value="0"/>
       <param name="check_stereo" value="1"/>
       <param name="check_circle" value="1"/>
       <param name="check_ransac" value="0"/>
-      <param name="virtual_focal_length" value="400"/>
+      <param name="check_static" value="0"/>
 
       <remap from="~imu" to="/imu0"/>
       <remap from="~cam0_image" to="/cam0/image_raw"/>

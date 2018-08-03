@@ -119,12 +119,13 @@ void Estimator::processIMU(double dt, const Vector3d &linear_acceleration, const
     gyr_0 = angular_velocity;
 }
 
-
+map<int, vector<pair<int, Eigen::Matrix<double, 7 * 2, 1>>>> prev_points;
 
 void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<double, 7 * 2, 1>>>> &image, const std_msgs::Header &header)
 {
     ROS_DEBUG("new image coming ------------------------------------------");
     ROS_DEBUG("Adding feature points %lu", image.size());
+
     if (f_manager.addFeatureCheckParallax(frame_count, image, td))
         marginalization_flag = MARGIN_OLD;
     else
@@ -141,25 +142,29 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
     all_image_frame.insert(make_pair(header.stamp.toSec(), imageframe));
     tmp_pre_integration = new IntegrationBase{acc_0, gyr_0, Bas[frame_count], Bgs[frame_count]};
 
-#if 0
+    // 静止状态检测，剔除静态outlier
     if(frame_count > 1 && solver_flag != INITIAL)
     {
         Vector3d delta_p = Ps[frame_count] - Ps_prev;
         Matrix3d delta_q =  Rs[frame_count].inverse() * Rs_prev;
         Quaterniond delta_Q(delta_q);
-        double delta_angle = acos(delta_Q.w()) * 2.0 / 3.14 * 180.0;
+        double delta_angle = acos(delta_Q.w()) * 2.0 * 57.3;
         //double norm_vel = sqrt(pow(Vs[frame_count][0], 2) + pow(Vs[frame_count][1], 2) + pow(Vs[frame_count][2], 2));
-        double norm_pos = sqrt(pow(delta_p[0], 2) + pow(delta_p[1], 2) + pow(delta_p[2], 2));
+        double delta_pos = sqrt(pow(delta_p[0], 2) + pow(delta_p[1], 2) + pow(delta_p[2], 2));
         //cout << " imu velocity:"<< Vs[frame_count].transpose() << " |" <<norm_vel<<"  |" <<norm_pos<<endl;
-        fflush(stderr);
-        fprintf(stderr,"  %.4f, %.3f\n",norm_pos,delta_angle);
-        if(norm_pos < 0.002 && delta_angle < 0.05) // 2mm && 0.05度
-            fprintf(stderr,"静止啦!\n");
-
+        //fflush(stderr);
+        //fprintf(stderr,"  %.2fcm, %.2f°\n",delta_pos*100,delta_angle);
+        if(delta_pos < 0.001 && delta_angle < 0.05) // 1mm && 0.05度 
+        {
+            ROS_DEBUG("robot is still,delta_pos=%.2fcm, delta_angle%.2f°",delta_pos*100, delta_angle);
+            if(prev_points.size() > 0)
+                f_manager.removeStaticOutliers(prev_points ,image);
+        }       
         Ps_prev = Ps[frame_count];
         Rs_prev = Rs[frame_count];
+        prev_points = image;
     }
-#endif
+
 
     if (ESTIMATE_EXTRINSIC == 2)
     {

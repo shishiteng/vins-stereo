@@ -1277,18 +1277,6 @@ void ImageProcessor::integrateImuData(
     mean_linear_acc *= 1.0f / (end_iter - begin_iter);
   }
 
-  if(0)
-  {
-    double norm_gyr = sqrt(pow(mean_ang_vel[0], 2) + pow(mean_ang_vel[1], 2) + pow(mean_ang_vel[2], 2));
-    double norm_acc = sqrt(pow(mean_linear_acc[0], 2) + pow(mean_linear_acc[1], 2) + pow(mean_linear_acc[2], 2));
-    cout << "mean_ang_vel: " << mean_ang_vel << "  |" << fabs(norm_gyr) << endl;
-    cout << "mean_linear_acc: " << mean_linear_acc << "  |" << fabs(norm_acc - 9.8) << endl;
-    // 角度：1秒5度，位置：1秒0.5mm，20fps@200hz下加速度必须小于0.4m/s^2
-    // 这里要考虑噪声，所以稍微设置宽松一点
-    if (fabs(norm_gyr) < 5 / 57.3f && fabs(norm_acc - 9.8) < 0.05)
-      cout << "静止啦！！！！" << endl;
-  }
-
   // Transform the mean angular velocity from the IMU
   // frame to the cam0 and cam1 frames.
   Vec3f cam0_mean_ang_vel = R_cam0_imu.t() * mean_ang_vel;
@@ -1302,6 +1290,21 @@ void ImageProcessor::integrateImuData(
   Rodrigues(cam1_mean_ang_vel * dtime, cam1_R_p_c);
   cam0_R_p_c = cam0_R_p_c.t();
   cam1_R_p_c = cam1_R_p_c.t();
+
+  if(0)
+  {
+    double norm_gyr = sqrt(pow(mean_ang_vel[0], 2) + pow(mean_ang_vel[1], 2) + pow(mean_ang_vel[2], 2));
+    double norm_acc = sqrt(pow(mean_linear_acc[0], 2) + pow(mean_linear_acc[1], 2) + pow(mean_linear_acc[2], 2));
+    // 角度：1秒1度，位置：1秒1mm，20fps@200hz下两帧位移变化小于1mm
+    // 这里要考虑噪声，所以稍微设置宽松一点
+    // 匀速直线运动情况下这种假设是不成立的
+    double dangle_per_sec = norm_gyr * 57.3;
+    double dpos_per_sec = fabs(0.5 * (norm_acc - 9.8) * dtime); //(vt+0.5at^2)/t，其中v=0
+    //cout << "mean_ang_vel: " << mean_ang_vel << "  |" << dpos_per_sec << endl;
+    //cout << "mean_linear_acc: " << mean_linear_acc << "  |" << dpos_per_sec << endl;
+    if (dangle_per_sec < 1 && dpos_per_sec < 0.001)
+      cout << "静止： " << dangle_per_sec << "," << dpos_per_sec<<endl;
+  }
 
   // Delete the useless and used imu messages.
   imu_msg_buffer.erase(imu_msg_buffer.begin(), end_iter);

@@ -317,6 +317,7 @@ int PoseGraph::detectLoop(KeyFrame* keyframe, int frame_index)
         cv::resize(keyframe->image, compressed_image, cv::Size(376, 240));
         cv::rectangle(compressed_image, cv::Rect(0,0,200,50), cv::Scalar(0, 0, 0),CV_FILLED);
         putText(compressed_image, "feature_num:" + to_string(feature_num), cv::Point2f(10, 10), CV_FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(255));
+        putText(compressed_image, "index:  " + to_string(frame_index), cv::Point2f(10, 30), CV_FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255));
         image_pool[frame_index] = compressed_image;
     }
     TicToc tmp_t;
@@ -353,7 +354,7 @@ int PoseGraph::detectLoop(KeyFrame* keyframe, int frame_index)
     {
         for (unsigned int i = 0; i < ret.size(); i++)
         {
-            if (ret[i].Score < 0.04)
+            if (ret[i].Score <= 0.04)
                 continue;
             int tmp_index = ret[i].Id;
             auto it = image_pool.find(tmp_index);
@@ -723,6 +724,8 @@ void PoseGraph::updatePath()
 
 void PoseGraph::savePoseGraph()
 {
+    fprintf (stderr, "save start:%d\n",keyframelist.size());
+
     m_keyframelist.lock();
     TicToc tmp_t;
     FILE *pFile;
@@ -732,8 +735,10 @@ void PoseGraph::savePoseGraph()
     pFile = fopen (file_path.c_str(),"w");
     //fprintf(pFile, "index time_stamp Tx Ty Tz Qw Qx Qy Qz loop_index loop_info\n");
     list<KeyFrame*>::iterator it;
+    int n=0;
     for (it = keyframelist.begin(); it != keyframelist.end(); it++)
     {
+        fprintf (stderr, " %d\n",n++);
         std::string image_path, descriptor_path, brief_path, keypoints_path;
         if (DEBUG_IMAGE)
         {
@@ -768,13 +773,18 @@ void PoseGraph::savePoseGraph()
             fprintf(keypoints_file, "%f %f %f %f\n", (*it)->keypoints[i].pt.x, (*it)->keypoints[i].pt.y, 
                                                      (*it)->keypoints_norm[i].pt.x, (*it)->keypoints_norm[i].pt.y);
         }
+        fprintf (stderr, "close brief_file\n");
         brief_file.close();
+        fprintf (stderr, "close keypoints_file\n");
         fclose(keypoints_file);
+        
     }
+    fprintf (stderr, "close pFile\n");
     fclose(pFile);
 
-    printf("save pose graph time: %f s\n", tmp_t.toc() / 1000);
+    fprintf(stderr,"save pose graph time: %f s\n", tmp_t.toc() / 1000);
     m_keyframelist.unlock();
+    fprintf (stderr, "end\n");
 }
 void PoseGraph::loadPoseGraph()
 {

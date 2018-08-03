@@ -41,8 +41,7 @@ int FeatureManager::getFeatureCount()
     return cnt;
 }
 
-
-bool FeatureManager::addFeatureCheckParallax(int frame_count, const map<int, vector<pair<int, Eigen::Matrix<double, 7*2, 1>>>> &image, double td)
+bool FeatureManager::addFeatureCheckParallax(int frame_count, const map<int, vector<pair<int, Eigen::Matrix<double, 7 * 2, 1>>>> &image, double td)
 {
     ROS_DEBUG("input feature: %d", (int)image.size());
     ROS_DEBUG("num of feature: %d", getFeatureCount());
@@ -54,10 +53,9 @@ bool FeatureManager::addFeatureCheckParallax(int frame_count, const map<int, vec
         FeaturePerFrame f_per_fra(id_pts.second[0].second, td);
 
         int feature_id = id_pts.first;
-        auto it = find_if(feature.begin(), feature.end(), [feature_id](const FeaturePerId &it)
-                          {
+        auto it = find_if(feature.begin(), feature.end(), [feature_id](const FeaturePerId &it) {
             return it.feature_id == feature_id;
-                          });
+        });
 
         if (it == feature.end())
         {
@@ -111,7 +109,7 @@ void FeatureManager::debugShow()
         {
             ROS_DEBUG("%d,", int(j.is_used));
             sum += j.is_used;
-            printf("(%lf,%lf) ",j.point(0), j.point(1));
+            printf("(%lf,%lf) ", j.point(0), j.point(1));
         }
         ROS_ASSERT(it.used_num == sum);
     }
@@ -131,7 +129,7 @@ vector<pair<Vector3d, Vector3d>> FeatureManager::getCorresponding(int frame_coun
             a = it.feature_per_frame[idx_l].point;
 
             b = it.feature_per_frame[idx_r].point;
-            
+
             corres.push_back(make_pair(a, b));
         }
     }
@@ -252,7 +250,55 @@ void FeatureManager::triangulate(Vector3d Ps[], Vector3d tic[], Matrix3d ric[])
         {
             it_per_id.estimated_depth = INIT_DEPTH;
         }
+    }
+}
 
+void FeatureManager::removeStaticOutliers(map<int, vector<pair<int, Eigen::Matrix<double, 7 * 2, 1>>>> prev_points,
+                                          map<int, vector<pair<int, Eigen::Matrix<double, 7 * 2, 1>>>> curr_points)
+{
+    //cv::Mat image(cv::Size(640,480),CV_8UC3,cv::Scalar(0,0,0));
+
+    double td = 0;
+    vector<int> outlier;
+    for (auto &id_pts : curr_points)
+    {
+        int feature_id = id_pts.first;
+        FeaturePerFrame f_per_fra(id_pts.second[0].second, td);
+
+        auto id_pts2 = prev_points.find(feature_id);
+        if (id_pts2 != prev_points.end())
+        {
+            vector<pair<int, Eigen::Matrix<double, 7 * 2, 1>>> pts = id_pts2->second;
+            FeaturePerFrame f_per_fra2(id_pts2->second[0].second, td);
+            double dx = (f_per_fra.uv.x() - f_per_fra2.uv.x());
+            double dy = (f_per_fra.uv.y() - f_per_fra2.uv.y());
+            //printf(" %d:%.2f,%.2f\n", feature_id, dx, dy);
+            if (dx > 1 || dy > 1) 
+            {
+                outlier.push_back(feature_id);
+                //cv::circle(image,cv::Point2f(f_per_fra.uv.x(),f_per_fra.uv.y()),2,cv::Scalar(0,0,255),-1);
+            }
+            else
+            {
+                //cv::circle(image,cv::Point2f(f_per_fra.uv.x(),f_per_fra.uv.y()),2,cv::Scalar(0,255,0),-1);
+            }       
+        }
+    }
+    //cv::imshow("static_outlier",image);
+    //cv::waitKey(1);
+
+    for (auto &feature_id : outlier)
+    {
+        //printf(" static outlier: %d", feature_id);
+        auto it = find_if(feature.begin(), feature.end(), [feature_id](const FeaturePerId &it) {
+            return it.feature_id == feature_id;
+        });
+
+        if (it != feature.end())
+        {
+            feature.erase(it);
+            ROS_DEBUG("  remove static outlier:%d",feature_id);
+        }
     }
 }
 
@@ -283,7 +329,7 @@ void FeatureManager::removeBackShiftDepth(Eigen::Matrix3d marg_R, Eigen::Vector3
             it->start_frame--;
         else
         {
-            Eigen::Vector3d uv_i = it->feature_per_frame[0].point;  
+            Eigen::Vector3d uv_i = it->feature_per_frame[0].point;
             it->feature_per_frame.erase(it->feature_per_frame.begin());
             if (it->feature_per_frame.size() < 2)
             {

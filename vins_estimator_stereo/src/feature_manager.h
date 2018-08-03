@@ -42,7 +42,7 @@ public:
   Vector3d point;
   Vector2d uv;
   Vector2d velocity;
-  
+
   Vector3d point1;
   Vector2d uv1;
   Vector2d velocity1;
@@ -104,6 +104,8 @@ public:
   void removeBack();
   void removeFront(int frame_count);
   void removeOutlier();
+  void removeStaticOutliers(map<int, vector<pair<int, Eigen::Matrix<double, 7 * 2, 1>>>> prev_points,
+                            map<int, vector<pair<int, Eigen::Matrix<double, 7 * 2, 1>>>> curr_points);
   list<FeaturePerId> feature;
   int last_track_num;
 
