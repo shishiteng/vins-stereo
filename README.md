@@ -14,7 +14,7 @@
 - 在vins_estimator基础上加入了双目约束。
 
 ## vins_estimator_multi
-- 参考vins_so(https://github.com/gaowenliang/vins_so)，改了一个支持双目甚至多目的vins。
+- 参考vins_so改了一个支持双目甚至多目的vins,(https://github.com/gaowenliang/vins_so)
 
 ## others
 - 特征点分布均匀时效果更好。
