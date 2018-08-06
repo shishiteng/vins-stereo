@@ -1,0 +1,25 @@
+<launch>
+    <node name="rvizvisualisation" pkg="rviz" type="rviz" output="log" args="-d $(find vins_estimator)/../config/navigation.rviz" />
+    
+    <arg name="config_path" default = "$(find vins_estimator)/../config/visensor_100t7/100t7.yaml" />
+    <arg name="vins_path" default = "$(find vins_estimator)/../config/../" />
+
+    <include file="$(find image_processor)/launch/image_processor_100t7.launch"/>
+
+    
+  <node name="stereo" pkg="vins_estimator_stereo" type="vins_estimator_stereo" output="screen">
+       <param name="config_file" type="string" value="$(arg config_path)" />
+       <param name="vins_folder" type="string" value="$(arg vins_path)" />
+       <remap from="/feature_tracker/feature" to="/image_processor/vins_features"/>
+    </node>
+
+    <node name="pose_graph" pkg="pose_graph" type="pose_graph" output="screen">
+        <param name="config_file" type="string" value="$(arg config_path)" />
+        <param name="visualization_shift_x" type="int" value="0" />
+        <param name="visualization_shift_y" type="int" value="0" />
+        <param name="skip_cnt" type="int" value="0" />
+        <param name="skip_dis" type="double" value="0" />
+        <!--remap from="/pose_graph/pose_graph_odom" to="/odom"/-->
+    </node>
+    
+</launch>

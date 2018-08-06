@@ -13,6 +13,9 @@
 ## vins_estimator_stereo
 - 在vins_estimator基础上加入了双目约束。
 
+## vins_estimator_multi
+- 参考vins_so(https://github.com/gaowenliang/vins_so)，改了一个支持双目甚至多目的vins。
+
 ## others
 - 特征点分布均匀时效果更好。
 - 使用bmi160(osr4)的效果比mpu9250(dlfp2.9ms)效果要好，bmi160的数据更稳定、噪声更小。
